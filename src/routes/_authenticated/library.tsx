@@ -18,7 +18,8 @@ type Book = {
   title: string;
   author: string | null;
   format: "pdf" | "epub";
-  drive_file_id: string;
+  drive_file_id: string | null;
+  storage_path: string | null;
   cover_url: string | null;
   pages: number | null;
   current_page: number;
@@ -41,21 +42,28 @@ function LibraryPage() {
 
   const upload = useMutation({
     mutationFn: async (file: File) => {
-      const { books } = await ensurePagesFolders();
       const isPdf = file.name.toLowerCase().endsWith(".pdf");
       const isEpub = file.name.toLowerCase().endsWith(".epub");
       if (!isPdf && !isEpub) throw new Error("Nur PDF und EPUB.");
+      if (file.size > 100 * 1024 * 1024) throw new Error("Max. 100 MB.");
       const mimeType = isPdf ? "application/pdf" : "application/epub+zip";
-      const { id: driveId } = await uploadFile({ name: file.name, mimeType, parentId: books, blob: file });
-      const title = file.name.replace(/\.(pdf|epub)$/i, "");
       const { data: user } = await supabase.auth.getUser();
+      const userId = user.user!.id;
+      const safe = file.name.replace(/[^\w.\-]+/g, "_");
+      const path = `${userId}/${Date.now()}-${safe}`;
+      const { error: upErr } = await supabase.storage.from("books").upload(path, file, { contentType: mimeType, upsert: false });
+      if (upErr) throw upErr;
+      const title = file.name.replace(/\.(pdf|epub)$/i, "");
       const { error } = await supabase.from("books").insert({
-        user_id: user.user!.id,
+        user_id: userId,
         title,
         format: isPdf ? "pdf" : "epub",
-        drive_file_id: driveId,
+        storage_path: path,
       });
-      if (error) throw error;
+      if (error) {
+        await supabase.storage.from("books").remove([path]).catch(() => {});
+        throw error;
+      }
     },
     onSuccess: () => {
       toast.success("Hochgeladen.");
@@ -63,6 +71,7 @@ function LibraryPage() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   async function syncDrive() {
     setSyncing(true);
