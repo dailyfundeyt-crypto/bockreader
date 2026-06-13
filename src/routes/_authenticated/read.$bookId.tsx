@@ -19,10 +19,12 @@ type Book = {
   id: string;
   title: string;
   format: "pdf" | "epub";
-  drive_file_id: string;
+  drive_file_id: string | null;
+  storage_path: string | null;
   pages: number | null;
   current_page: number;
 };
+
 
 type Annotation = {
   id: string;
