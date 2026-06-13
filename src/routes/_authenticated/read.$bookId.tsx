@@ -19,10 +19,12 @@ type Book = {
   id: string;
   title: string;
   format: "pdf" | "epub";
-  drive_file_id: string;
+  drive_file_id: string | null;
+  storage_path: string | null;
   pages: number | null;
   current_page: number;
 };
+
 
 type Annotation = {
   id: string;
@@ -51,9 +53,20 @@ function ReaderPage() {
       setBook(data as Book);
       setPage((data as Book).current_page || 1);
       try {
-        const b = await downloadFile((data as Book).drive_file_id);
+        const bk = data as Book;
+        let b: Blob;
+        if (bk.storage_path) {
+          const { data: dl, error: dlErr } = await supabase.storage.from("books").download(bk.storage_path);
+          if (dlErr || !dl) throw dlErr ?? new Error("Download fehlgeschlagen.");
+          b = dl;
+        } else if (bk.drive_file_id) {
+          b = await downloadFile(bk.drive_file_id);
+        } else {
+          throw new Error("Keine Datei verknüpft.");
+        }
         setBlob(b);
       } catch (e) { toast.error((e as Error).message); }
+
 
       // load annotations
       const { data: anns } = await supabase.from("annotations").select("*").eq("book_id", bookId);

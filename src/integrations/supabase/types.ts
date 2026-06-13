@@ -58,10 +58,11 @@ export type Database = {
           author: string | null
           cover_url: string | null
           current_page: number
-          drive_file_id: string
+          drive_file_id: string | null
           format: string
           id: string
           pages: number | null
+          storage_path: string | null
           title: string
           user_id: string
         }
@@ -70,10 +71,11 @@ export type Database = {
           author?: string | null
           cover_url?: string | null
           current_page?: number
-          drive_file_id: string
+          drive_file_id?: string | null
           format: string
           id?: string
           pages?: number | null
+          storage_path?: string | null
           title: string
           user_id: string
         }
@@ -82,10 +84,11 @@ export type Database = {
           author?: string | null
           cover_url?: string | null
           current_page?: number
-          drive_file_id?: string
+          drive_file_id?: string | null
           format?: string
           id?: string
           pages?: number | null
+          storage_path?: string | null
           title?: string
           user_id?: string
         }
