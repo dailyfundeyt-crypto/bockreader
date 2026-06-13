@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/AppHeader";
 import { ensurePagesFolders } from "@/lib/drive";
 import { toast } from "sonner";
+import { User, Palette, HardDrive, FolderTree } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({ meta: [{ title: "Settings · Pages" }] }),
@@ -33,39 +34,66 @@ function SettingsPage() {
   return (
     <div>
       <PageHeader kicker="SETTINGS" title="Konto & Drive" />
-      <div className="p-8 max-w-xl space-y-4">
-        <Row label="Account" value={email || "—"} />
-        <div className="border hairline p-5 flex items-center justify-between">
-          <div>
-            <div className="font-mono text-sm">Theme</div>
-            <div className="label-mono text-muted-foreground mt-1">Dark oder Light</div>
-          </div>
-          <button onClick={toggleTheme} className="label-mono border hairline px-3 py-2 hover:bg-secondary">{theme === "dark" ? "Dark" : "Light"}</button>
-        </div>
-        <div className="border hairline p-5 flex items-center justify-between">
-          <div>
-            <div className="font-mono text-sm">Google Drive</div>
-            <div className="label-mono text-muted-foreground mt-1">
-              {driveOk === null ? "Verbindung prüfen" : driveOk ? "Verbunden" : "Nicht verbunden"}
+      <div className="p-8 max-w-2xl space-y-4">
+        <Card icon={<User className="h-5 w-5" />} tone="cream">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="font-serif text-lg">Account</div>
+              <div className="text-sm text-muted-foreground mt-0.5">Eingeloggt als</div>
             </div>
+            <div className="font-sans text-sm text-foreground/80">{email || "—"}</div>
           </div>
-          <button onClick={testDrive} className="label-mono border hairline px-3 py-2 hover:bg-secondary">Test</button>
-        </div>
-        <div className="border hairline p-5 label-mono text-muted-foreground">
-          Pages legt einen Ordner <span className="text-foreground">/Pages/Books</span> und <span className="text-foreground">/Pages/Notes</span> in deiner Drive an. Zugriff: nur eigene Dateien (drive.file scope).
-        </div>
+        </Card>
+
+        <Card icon={<Palette className="h-5 w-5" />} tone="sage">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="font-serif text-lg">Erscheinungsbild</div>
+              <div className="text-sm text-muted-foreground mt-0.5">Hell oder dunkel — wechsle, wie es sich richtig anfühlt.</div>
+            </div>
+            <button onClick={toggleTheme} className="label-mono rounded-full bg-primary text-primary-foreground px-4 py-2 hover:bg-sage-deep transition-colors shadow-sm">
+              {theme === "dark" ? "Dunkel" : "Hell"}
+            </button>
+          </div>
+        </Card>
+
+        <Card icon={<HardDrive className="h-5 w-5" />} tone="clay">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="font-serif text-lg">Google Drive</div>
+              <div className="text-sm text-muted-foreground mt-0.5">
+                {driveOk === null ? "Verbindung noch nicht geprüft." : driveOk ? "Verbunden ✿" : "Nicht verbunden."}
+              </div>
+            </div>
+            <button onClick={testDrive} className="label-mono rounded-full border hairline bg-background px-4 py-2 hover:bg-secondary transition-colors">
+              Test
+            </button>
+          </div>
+        </Card>
+
+        <Card icon={<FolderTree className="h-5 w-5" />} tone="cream">
+          <div className="font-serif text-lg">Wo deine Sachen liegen</div>
+          <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+            Pages legt zwei Ordner in deiner Drive an: <span className="text-foreground font-medium">/Pages/Books</span> für deine Bibliothek
+            und <span className="text-foreground font-medium">/Pages/Notes</span> für KI-Lerneinheiten. Zugriff nur auf eigene Dateien (drive.file scope).
+          </p>
+        </Card>
       </div>
     </div>
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Card({ children, icon, tone }: { children: React.ReactNode; icon: React.ReactNode; tone: "cream" | "sage" | "clay" }) {
+  const bg = tone === "sage" ? "bg-secondary" : tone === "clay" ? "bg-accent/25" : "bg-card";
+  const iconBg = tone === "sage" ? "bg-primary text-primary-foreground" : tone === "clay" ? "bg-accent text-accent-foreground" : "bg-primary/20 text-primary";
   return (
-    <div className="border hairline p-5 flex items-center justify-between">
-      <div>
-        <div className="font-mono text-sm">{label}</div>
+    <div className={`rounded-2xl border hairline ${bg} p-6 shadow-sm`}>
+      <div className="flex items-start gap-4">
+        <div className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${iconBg}`}>
+          {icon}
+        </div>
+        <div className="flex-1 min-w-0">{children}</div>
       </div>
-      <div className="font-mono text-sm text-muted-foreground">{value}</div>
     </div>
   );
 }

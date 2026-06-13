@@ -36,12 +36,17 @@ function AuthLayout() {
   if (isReader) return <Outlet />;
 
   return (
-    <div className="min-h-screen flex bg-background text-foreground">
-      <aside className="w-56 border-r hairline flex flex-col">
+    <div className="min-h-screen flex text-foreground">
+      <aside className="w-60 border-r hairline flex flex-col bg-card/50 backdrop-blur-sm">
         <div className="px-5 py-5 border-b hairline">
-          <Link to="/library" className="flex items-center gap-2">
-            <span className="inline-block h-2 w-2 rounded-full bg-accent" />
-            <span className="font-mono text-sm font-bold">PAGES</span>
+          <Link to="/library" className="flex items-center gap-2.5">
+            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 21c0-9 7-16 16-16-1 9-7 16-16 16z" />
+                <path d="M5 21c4-4 7-7 11-11" />
+              </svg>
+            </span>
+            <span className="font-serif text-lg font-semibold tracking-tight">Pages</span>
           </Link>
         </div>
         <nav className="flex-1 p-3 space-y-1">
@@ -51,19 +56,21 @@ function AuthLayout() {
               <Link
                 key={n.to}
                 to={n.to}
-                className={`flex items-center gap-3 px-3 py-2 text-sm transition-colors ${
-                  active ? "bg-foreground text-background" : "hover:bg-secondary"
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-colors ${
+                  active
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "hover:bg-secondary text-foreground/80"
                 }`}
               >
                 <n.icon className="h-4 w-4" />
-                <span className="font-mono">{n.label}</span>
+                <span className="font-sans font-medium">{n.label}</span>
               </Link>
             );
           })}
         </nav>
-        <button onClick={signOut} className="m-3 flex items-center gap-3 px-3 py-2 text-sm hover:bg-secondary transition-colors">
+        <button onClick={signOut} className="m-3 flex items-center gap-3 px-3 py-2.5 rounded-full text-sm hover:bg-secondary text-muted-foreground transition-colors">
           <LogOut className="h-4 w-4" />
-          <span className="font-mono">Sign out</span>
+          <span className="font-sans font-medium">Sign out</span>
         </button>
       </aside>
       <main className="flex-1 overflow-auto">

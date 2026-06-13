@@ -99,10 +99,10 @@ function LibraryPage() {
         title="Deine Bücher"
         actions={
           <>
-            <button onClick={syncDrive} disabled={syncing} className="label-mono border hairline px-3 py-2 hover:bg-secondary flex items-center gap-2">
+            <button onClick={syncDrive} disabled={syncing} className="label-mono rounded-full border hairline bg-card px-4 py-2 hover:bg-secondary flex items-center gap-2 transition-colors">
               <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} /> Sync
             </button>
-            <button onClick={() => fileInput.current?.click()} className="label-mono bg-foreground text-background px-3 py-2 flex items-center gap-2 hover:bg-accent">
+            <button onClick={() => fileInput.current?.click()} className="label-mono rounded-full bg-primary text-primary-foreground px-4 py-2 flex items-center gap-2 hover:bg-sage-deep transition-colors shadow-sm">
               <Upload className="h-3.5 w-3.5" /> Upload
             </button>
             <input
@@ -122,7 +122,7 @@ function LibraryPage() {
           <EmptyState />
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-            {booksQ.data.map((b) => <BookTile key={b.id} book={b} />)}
+            {booksQ.data.map((b, i) => <BookTile key={b.id} book={b} idx={i} />)}
           </div>
         )}
       </div>
@@ -130,20 +130,28 @@ function LibraryPage() {
   );
 }
 
-function BookTile({ book }: { book: Book }) {
+const TILE_TONES = [
+  "bg-secondary",
+  "bg-accent/30",
+  "bg-primary/20",
+  "bg-sun/30",
+  "bg-card",
+] as const;
+
+function BookTile({ book, idx }: { book: Book; idx: number }) {
+  const tone = TILE_TONES[idx % TILE_TONES.length];
   return (
     <Link to="/read/$bookId" params={{ bookId: book.id }} className="group block">
-      <div className="aspect-[2/3] border hairline bg-secondary relative overflow-hidden">
-        <div className="absolute inset-0 dot-matrix opacity-40" />
-        <div className="absolute inset-0 flex items-center justify-center p-4 text-center">
-          <span className="font-mono text-sm leading-tight">{book.title}</span>
+      <div className={`aspect-[2/3] rounded-2xl border hairline ${tone} relative overflow-hidden transition-transform group-hover:-translate-y-1 shadow-sm`}>
+        <div className="absolute inset-0 flex items-center justify-center p-5 text-center">
+          <span className="font-serif text-lg leading-tight">{book.title}</span>
         </div>
-        <div className="absolute top-2 left-2 label-mono bg-background/80 px-1.5 py-0.5">{book.format.toUpperCase()}</div>
+        <div className="absolute top-2.5 left-2.5 label-mono bg-background/80 rounded-full px-2 py-0.5">{book.format.toUpperCase()}</div>
       </div>
-      <div className="mt-3">
-        <div className="font-mono text-sm truncate">{book.title}</div>
+      <div className="mt-3 px-1">
+        <div className="font-serif text-base truncate">{book.title}</div>
         <div className="label-mono text-muted-foreground mt-1">
-          {book.pages ? `${book.current_page}/${book.pages}` : "—"}
+          {book.pages ? `${book.current_page} / ${book.pages}` : "—"}
         </div>
       </div>
     </Link>
@@ -152,10 +160,12 @@ function BookTile({ book }: { book: Book }) {
 
 function EmptyState() {
   return (
-    <div className="border hairline dot-matrix py-20 text-center">
-      <BookOpen className="mx-auto h-8 w-8 text-muted-foreground" />
-      <p className="mt-4 font-mono text-lg">Noch keine Bücher.</p>
-      <p className="mt-2 label-mono text-muted-foreground">Lade ein PDF oder EPUB hoch, oder synce dein Drive.</p>
+    <div className="rounded-3xl border hairline bg-card/60 py-20 text-center">
+      <div className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary/20 text-primary">
+        <BookOpen className="h-6 w-6" />
+      </div>
+      <p className="mt-5 font-serif text-2xl">Noch keine Bücher.</p>
+      <p className="mt-2 text-sm text-muted-foreground">Lade ein PDF oder EPUB hoch, oder synce dein Drive.</p>
     </div>
   );
 }
