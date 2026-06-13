@@ -210,13 +210,15 @@ function PdfView({
   const fileMemo = useMemo(() => (buf ? { data: buf } : null), [buf]);
   return (
     <div className="relative shadow-lg" style={{ width: size.w }}>
-      {fileMemo && <Document file={fileMemo} onLoadSuccess={({ numPages }) => onNumPages(numPages)} loading={<div className="p-12 label-mono">Lade PDF…</div>}>
-        <Page
-          pageNumber={page}
-          width={800}
-          onRenderSuccess={(p) => setSize({ w: p.width, h: p.height })}
-        />
-      </Document>
+      {fileMemo && (
+        <Document file={fileMemo} onLoadSuccess={({ numPages }) => onNumPages(numPages)} loading={<div className="p-12 label-mono">Lade PDF…</div>}>
+          <Page
+            pageNumber={page}
+            width={800}
+            onRenderSuccess={(p) => setSize({ w: p.width, h: p.height })}
+          />
+        </Document>
+      )}
       <PenLayer width={size.w} height={size.h} tool={tool} strokes={strokes} onCommit={onStroke} />
       {notes.map((n) => (
         <div key={n.id} className="absolute bg-yellow-200 text-black text-xs p-2 max-w-[160px] shadow" style={{ left: n.data.x, top: n.data.y }}>
