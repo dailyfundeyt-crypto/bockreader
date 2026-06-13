@@ -5,7 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { downloadFile, ensurePagesFolders, listBooks, uploadFile } from "@/lib/drive";
 import { PageHeader } from "@/components/AppHeader";
 import { toast } from "sonner";
-import { Upload, RefreshCw, BookOpen } from "lucide-react";
+import { Upload, RefreshCw, BookOpen, Library as LibraryIcon, FileText, CheckCircle2 } from "lucide-react";
+import { useMemo } from "react";
 
 export const Route = createFileRoute("/_authenticated/library")({
   head: () => ({ meta: [{ title: "Library · Pages" }] }),
