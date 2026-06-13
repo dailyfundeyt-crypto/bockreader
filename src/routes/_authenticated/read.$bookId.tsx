@@ -205,10 +205,12 @@ function PdfView({
   notes: Annotation[];
 }) {
   const [size, setSize] = useState({ w: 800, h: 1000 });
-  const fileMemo = useMemo(() => ({ data: blob.arrayBuffer() }), [blob]);
+  const [buf, setBuf] = useState<Uint8Array | null>(null);
+  useEffect(() => { let c = false; blob.arrayBuffer().then((a) => { if (!c) setBuf(new Uint8Array(a)); }); return () => { c = true; }; }, [blob]);
+  const fileMemo = useMemo(() => (buf ? { data: buf } : null), [buf]);
   return (
     <div className="relative shadow-lg" style={{ width: size.w }}>
-      <Document file={fileMemo} onLoadSuccess={({ numPages }) => onNumPages(numPages)} loading={<div className="p-12 label-mono">Lade PDF…</div>}>
+      {fileMemo && <Document file={fileMemo} onLoadSuccess={({ numPages }) => onNumPages(numPages)} loading={<div className="p-12 label-mono">Lade PDF…</div>}>
         <Page
           pageNumber={page}
           width={800}
