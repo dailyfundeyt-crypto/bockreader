@@ -14,7 +14,213 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      annotations: {
+        Row: {
+          book_id: string
+          created_at: string
+          data: Json
+          id: string
+          page: number
+          type: string
+          user_id: string
+        }
+        Insert: {
+          book_id: string
+          created_at?: string
+          data: Json
+          id?: string
+          page: number
+          type: string
+          user_id: string
+        }
+        Update: {
+          book_id?: string
+          created_at?: string
+          data?: Json
+          id?: string
+          page?: number
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "annotations_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      books: {
+        Row: {
+          added_at: string
+          author: string | null
+          cover_url: string | null
+          current_page: number
+          drive_file_id: string
+          format: string
+          id: string
+          pages: number | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          added_at?: string
+          author?: string | null
+          cover_url?: string | null
+          current_page?: number
+          drive_file_id: string
+          format: string
+          id?: string
+          pages?: number | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          added_at?: string
+          author?: string | null
+          cover_url?: string | null
+          current_page?: number
+          drive_file_id?: string
+          format?: string
+          id?: string
+          pages?: number | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      goals: {
+        Row: {
+          created_at: string
+          id: string
+          target: number
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          target: number
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          target?: number
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      learning_units: {
+        Row: {
+          book_id: string
+          content_md: string
+          created_at: string
+          drive_file_id: string | null
+          id: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          book_id: string
+          content_md: string
+          created_at?: string
+          drive_file_id?: string | null
+          id?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          book_id?: string
+          content_md?: string
+          created_at?: string
+          drive_file_id?: string | null
+          id?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_units_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          books_folder_id: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          notes_folder_id: string | null
+          pages_folder_id: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          books_folder_id?: string | null
+          created_at?: string
+          display_name?: string | null
+          id: string
+          notes_folder_id?: string | null
+          pages_folder_id?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          books_folder_id?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          notes_folder_id?: string | null
+          pages_folder_id?: string | null
+        }
+        Relationships: []
+      }
+      reading_sessions: {
+        Row: {
+          book_id: string
+          duration_seconds: number
+          ended_at: string | null
+          id: string
+          pages_read: number
+          started_at: string
+          user_id: string
+        }
+        Insert: {
+          book_id: string
+          duration_seconds?: number
+          ended_at?: string | null
+          id?: string
+          pages_read?: number
+          started_at?: string
+          user_id: string
+        }
+        Update: {
+          book_id?: string
+          duration_seconds?: number
+          ended_at?: string | null
+          id?: string
+          pages_read?: number
+          started_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reading_sessions_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
