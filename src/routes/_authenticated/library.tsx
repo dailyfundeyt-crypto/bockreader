@@ -116,7 +116,8 @@ function LibraryPage() {
           </>
         }
       />
-      <div className="p-8">
+      <div className="p-8 space-y-6">
+        <LibStats books={booksQ.data ?? []} />
         {booksQ.isLoading ? (
           <p className="label-mono text-muted-foreground">Lade…</p>
         ) : !booksQ.data?.length ? (
