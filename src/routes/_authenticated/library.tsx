@@ -171,3 +171,34 @@ function EmptyState() {
     </div>
   );
 }
+
+function LibStats({ books }: { books: Book[] }) {
+  const stats = useMemo(() => {
+    const total = books.length;
+    const reading = books.filter((b) => b.current_page > 0 && (!b.pages || b.current_page < b.pages)).length;
+    const finished = books.filter((b) => b.pages && b.current_page >= b.pages).length;
+    const pagesRead = books.reduce((a, b) => a + (b.current_page || 0), 0);
+    return { total, reading, finished, pagesRead };
+  }, [books]);
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <Kpi tone="bg-secondary" icon={<LibraryIcon className="h-4 w-4" />} label="BIBLIOTHEK" value={String(stats.total)} hint="Bücher" />
+      <Kpi tone="bg-accent/30" icon={<BookOpen className="h-4 w-4" />} label="LESE GERADE" value={String(stats.reading)} hint="aktiv" />
+      <Kpi tone="bg-primary/15" icon={<CheckCircle2 className="h-4 w-4" />} label="FERTIG" value={String(stats.finished)} hint="durchgelesen" />
+      <Kpi tone="bg-sun/30" icon={<FileText className="h-4 w-4" />} label="SEITEN" value={stats.pagesRead.toLocaleString("de-DE")} hint="gesamt" />
+    </div>
+  );
+}
+
+function Kpi({ tone, icon, label, value, hint }: { tone: string; icon: React.ReactNode; label: string; value: string; hint: string }) {
+  return (
+    <div className={`rounded-2xl p-5 shadow-sm ${tone}`}>
+      <div className="flex items-center justify-between">
+        <div className="label-mono opacity-80">{label}</div>
+        <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-background/40">{icon}</div>
+      </div>
+      <div className="mt-3 font-serif text-3xl font-semibold">{value}</div>
+      <div className="mt-1 text-xs opacity-75">{hint}</div>
+    </div>
+  );
+}
