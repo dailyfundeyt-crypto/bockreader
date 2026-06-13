@@ -5,7 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { downloadFile, ensurePagesFolders, listBooks, uploadFile } from "@/lib/drive";
 import { PageHeader } from "@/components/AppHeader";
 import { toast } from "sonner";
-import { Upload, RefreshCw, BookOpen } from "lucide-react";
+import { Upload, RefreshCw, BookOpen, Library as LibraryIcon, FileText, CheckCircle2 } from "lucide-react";
+import { useMemo } from "react";
 
 export const Route = createFileRoute("/_authenticated/library")({
   head: () => ({ meta: [{ title: "Library · Pages" }] }),
@@ -115,7 +116,8 @@ function LibraryPage() {
           </>
         }
       />
-      <div className="p-8">
+      <div className="p-8 space-y-6">
+        <LibStats books={booksQ.data ?? []} />
         {booksQ.isLoading ? (
           <p className="label-mono text-muted-foreground">Lade…</p>
         ) : !booksQ.data?.length ? (
@@ -166,6 +168,37 @@ function EmptyState() {
       </div>
       <p className="mt-5 font-serif text-2xl">Noch keine Bücher.</p>
       <p className="mt-2 text-sm text-muted-foreground">Lade ein PDF oder EPUB hoch, oder synce dein Drive.</p>
+    </div>
+  );
+}
+
+function LibStats({ books }: { books: Book[] }) {
+  const stats = useMemo(() => {
+    const total = books.length;
+    const reading = books.filter((b) => b.current_page > 0 && (!b.pages || b.current_page < b.pages)).length;
+    const finished = books.filter((b) => b.pages && b.current_page >= b.pages).length;
+    const pagesRead = books.reduce((a, b) => a + (b.current_page || 0), 0);
+    return { total, reading, finished, pagesRead };
+  }, [books]);
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <Kpi tone="bg-secondary" icon={<LibraryIcon className="h-4 w-4" />} label="BIBLIOTHEK" value={String(stats.total)} hint="Bücher" />
+      <Kpi tone="bg-accent/30" icon={<BookOpen className="h-4 w-4" />} label="LESE GERADE" value={String(stats.reading)} hint="aktiv" />
+      <Kpi tone="bg-primary/15" icon={<CheckCircle2 className="h-4 w-4" />} label="FERTIG" value={String(stats.finished)} hint="durchgelesen" />
+      <Kpi tone="bg-sun/30" icon={<FileText className="h-4 w-4" />} label="SEITEN" value={stats.pagesRead.toLocaleString("de-DE")} hint="gesamt" />
+    </div>
+  );
+}
+
+function Kpi({ tone, icon, label, value, hint }: { tone: string; icon: React.ReactNode; label: string; value: string; hint: string }) {
+  return (
+    <div className={`rounded-2xl p-5 shadow-sm ${tone}`}>
+      <div className="flex items-center justify-between">
+        <div className="label-mono opacity-80">{label}</div>
+        <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-background/40">{icon}</div>
+      </div>
+      <div className="mt-3 font-serif text-3xl font-semibold">{value}</div>
+      <div className="mt-1 text-xs opacity-75">{hint}</div>
     </div>
   );
 }
