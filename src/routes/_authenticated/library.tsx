@@ -120,7 +120,21 @@ function LibraryPage() {
               type="file"
               accept=".pdf,.epub"
               hidden
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) upload.mutate(f); e.currentTarget.value = ""; }}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.currentTarget.value = "";
+                if (!f) return;
+                const ok = window.confirm(
+                  "Copyright-Hinweis\n\n" +
+                  "Bitte lade nur Dateien hoch, an denen du die Rechte hast " +
+                  "(eigene Werke, gekaufte/lizenzierte Bücher zum Privatgebrauch, " +
+                  "gemeinfreie oder offen lizenzierte Titel).\n\n" +
+                  "Das Hochladen urheberrechtlich geschützter Inhalte ohne Erlaubnis " +
+                  "kann gegen geltendes Recht verstoßen — die Verantwortung dafür liegt bei dir.\n\n" +
+                  "Mit „OK" bestätigst du, dass du die Datei rechtmäßig nutzt."
+                );
+                if (ok) upload.mutate(f);
+              }}
             />
           </>
         }
