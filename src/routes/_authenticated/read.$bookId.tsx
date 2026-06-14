@@ -154,26 +154,47 @@ function ReaderPage() {
 
   if (!book) return <div className="p-8 label-mono">Lade Buch…</div>;
 
+  const goPrev = () => setPage((p) => Math.max(1, p - 1));
+  const goNext = () => setPage((p) => (numPages ? Math.min(numPages, p + 1) : p + 1));
+
+  // swipe nav
+  const touchX = useRef<number | null>(null);
+  function onTouchStart(e: React.TouchEvent) {
+    if (tool !== "none") return;
+    touchX.current = e.touches[0].clientX;
+  }
+  function onTouchEnd(e: React.TouchEvent) {
+    if (touchX.current == null) return;
+    const dx = e.changedTouches[0].clientX - touchX.current;
+    touchX.current = null;
+    if (Math.abs(dx) < 50) return;
+    if (dx < 0) goNext(); else goPrev();
+  }
+
   return (
-    <div className="flex flex-col h-screen bg-background">
-      <div className="border-b hairline px-4 py-2 flex items-center gap-3">
-        <button onClick={() => navigate({ to: "/library" })} className="p-2 hover:bg-secondary"><ArrowLeft className="h-4 w-4" /></button>
+    <div className="flex flex-col h-[100dvh] bg-background">
+      <div className="border-b hairline px-3 py-2 flex flex-wrap items-center gap-2">
+        <button onClick={() => navigate({ to: "/library" })} className="p-2 rounded-md hover:bg-secondary"><ArrowLeft className="h-4 w-4" /></button>
         <div className="flex-1 min-w-0">
           <div className="font-mono text-sm truncate">{book.title}</div>
           <div className="label-mono text-muted-foreground">{book.format.toUpperCase()} · {page}{numPages ? `/${numPages}` : ""}</div>
         </div>
-        <div className="flex items-center gap-1 border hairline">
+        <div className="flex items-center gap-1 border hairline rounded-md">
           <ToolBtn active={tool === "none"} onClick={() => setTool("none")}><MousePointer2 className="h-4 w-4" /></ToolBtn>
           <ToolBtn active={tool === "pen"} onClick={() => setTool("pen")}><Pen className="h-4 w-4" /></ToolBtn>
           <ToolBtn active={tool === "highlight"} onClick={() => setTool("highlight")}><Highlighter className="h-4 w-4" /></ToolBtn>
           <ToolBtn onClick={addNote}><StickyNote className="h-4 w-4" /></ToolBtn>
         </div>
-        <button onClick={generate} disabled={generating} className="label-mono bg-foreground text-background px-3 py-2 hover:bg-accent flex items-center gap-2 disabled:opacity-60">
+        <button onClick={generate} disabled={generating} className="label-mono bg-foreground text-background px-3 py-2 rounded-md hover:bg-accent flex items-center gap-2 disabled:opacity-60">
           <Sparkles className="h-3.5 w-3.5" /> {generating ? "..." : "Lerneinheit"}
         </button>
       </div>
 
-      <div className="flex-1 overflow-auto flex items-start justify-center py-6">
+      <div
+        className="flex-1 overflow-auto flex items-start justify-center py-6 px-2"
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
         {blob && book.format === "pdf" && (
           <Suspense fallback={<div className="p-12 label-mono">Lade PDF…</div>}>
             <PdfView
@@ -192,10 +213,14 @@ function ReaderPage() {
         )}
       </div>
 
-      <div className="border-t hairline px-4 py-2 flex items-center justify-center gap-4">
-        <button onClick={() => setPage((p) => Math.max(1, p - 1))} className="p-2 hover:bg-secondary"><ChevronLeft className="h-4 w-4" /></button>
-        <span className="font-mono text-sm">{page}{numPages ? ` / ${numPages}` : ""}</span>
-        <button onClick={() => setPage((p) => (numPages ? Math.min(numPages, p + 1) : p + 1))} className="p-2 hover:bg-secondary"><ChevronRight className="h-4 w-4" /></button>
+      <div className="border-t hairline px-4 py-3 flex items-center justify-between gap-3 bg-card/80 backdrop-blur sticky bottom-0" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)" }}>
+        <button onClick={goPrev} disabled={page <= 1} className="flex-1 max-w-[160px] flex items-center justify-center gap-2 rounded-full border hairline bg-background px-4 py-2.5 disabled:opacity-40 active:scale-[0.98] transition">
+          <ChevronLeft className="h-4 w-4" /> <span className="label-mono">Zurück</span>
+        </button>
+        <span className="font-mono text-sm whitespace-nowrap">{page}{numPages ? ` / ${numPages}` : ""}</span>
+        <button onClick={goNext} disabled={numPages > 0 && page >= numPages} className="flex-1 max-w-[160px] flex items-center justify-center gap-2 rounded-full bg-primary text-primary-foreground px-4 py-2.5 disabled:opacity-40 active:scale-[0.98] transition shadow-sm">
+          <span className="label-mono">Weiter</span> <ChevronRight className="h-4 w-4" />
+        </button>
       </div>
     </div>
   );
@@ -211,6 +236,18 @@ function ToolBtn({ children, active, onClick }: { children: React.ReactNode; act
 function EpubView({ blob, page, onPage, onNumPages }: { blob: Blob; page: number; onPage: (n: number) => void; onNumPages: (n: number) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const renditionRef = useRef<any>(null);
+  const [dims, setDims] = useState({ w: 800, h: 1000 });
+
+  useEffect(() => {
+    function measure() {
+      const w = Math.min(900, Math.max(280, (ref.current?.parentElement?.clientWidth ?? 800) - 16));
+      const h = Math.max(420, window.innerHeight - 180);
+      setDims({ w, h });
+    }
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -219,7 +256,7 @@ function EpubView({ blob, page, onPage, onNumPages }: { blob: Blob; page: number
       if (cancelled || !ref.current) return;
       const buf = await blob.arrayBuffer();
       const book = ePub(buf as any);
-      const rendition = book.renderTo(ref.current, { width: 800, height: 1000, spread: "none" });
+      const rendition = book.renderTo(ref.current, { width: dims.w, height: dims.h, spread: "none" });
       renditionRef.current = rendition;
       await rendition.display();
       await book.locations.generate(1500);
@@ -232,10 +269,14 @@ function EpubView({ blob, page, onPage, onNumPages }: { blob: Blob; page: number
   }, [blob, onNumPages, onPage]);
 
   useEffect(() => {
+    renditionRef.current?.resize?.(dims.w, dims.h);
+  }, [dims]);
+
+  useEffect(() => {
     if (!renditionRef.current) return;
     const cfi = renditionRef.current.book?.locations?.cfiFromLocation(page);
     if (cfi) renditionRef.current.display(cfi);
   }, [page]);
 
-  return <div ref={ref} className="border hairline bg-white" style={{ width: 800, height: 1000 }} />;
+  return <div ref={ref} className="border hairline bg-white" style={{ width: dims.w, height: dims.h }} />;
 }
