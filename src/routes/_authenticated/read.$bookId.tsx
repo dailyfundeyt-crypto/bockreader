@@ -236,6 +236,18 @@ function ToolBtn({ children, active, onClick }: { children: React.ReactNode; act
 function EpubView({ blob, page, onPage, onNumPages }: { blob: Blob; page: number; onPage: (n: number) => void; onNumPages: (n: number) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const renditionRef = useRef<any>(null);
+  const [dims, setDims] = useState({ w: 800, h: 1000 });
+
+  useEffect(() => {
+    function measure() {
+      const w = Math.min(900, Math.max(280, (ref.current?.parentElement?.clientWidth ?? 800) - 16));
+      const h = Math.max(420, window.innerHeight - 180);
+      setDims({ w, h });
+    }
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -244,7 +256,7 @@ function EpubView({ blob, page, onPage, onNumPages }: { blob: Blob; page: number
       if (cancelled || !ref.current) return;
       const buf = await blob.arrayBuffer();
       const book = ePub(buf as any);
-      const rendition = book.renderTo(ref.current, { width: 800, height: 1000, spread: "none" });
+      const rendition = book.renderTo(ref.current, { width: dims.w, height: dims.h, spread: "none" });
       renditionRef.current = rendition;
       await rendition.display();
       await book.locations.generate(1500);
@@ -257,10 +269,14 @@ function EpubView({ blob, page, onPage, onNumPages }: { blob: Blob; page: number
   }, [blob, onNumPages, onPage]);
 
   useEffect(() => {
+    renditionRef.current?.resize?.(dims.w, dims.h);
+  }, [dims]);
+
+  useEffect(() => {
     if (!renditionRef.current) return;
     const cfi = renditionRef.current.book?.locations?.cfiFromLocation(page);
     if (cfi) renditionRef.current.display(cfi);
   }, [page]);
 
-  return <div ref={ref} className="border hairline bg-white" style={{ width: 800, height: 1000 }} />;
+  return <div ref={ref} className="border hairline bg-white" style={{ width: dims.w, height: dims.h }} />;
 }
