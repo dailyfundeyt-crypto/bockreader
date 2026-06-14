@@ -3,10 +3,10 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Pages — Lies. Markier. Lern." },
-      { name: "description", content: "Lade deine Bücher hoch, lies sie überall, markiere mit dem Stift und lass die KI Lerneinheiten draus machen — synchronisiert über dein Google Drive." },
-      { property: "og:title", content: "Pages — Lies. Markier. Lern." },
-      { property: "og:description", content: "Lade deine Bücher hoch, lies sie überall, markiere mit dem Stift und lass die KI Lerneinheiten draus machen." },
+      { title: "Pages — Read. Mark. Learn." },
+      { name: "description", content: "Upload your books, read them anywhere, mark up with the pen and let the AI turn them into learning units — synced through your Google Drive." },
+      { property: "og:title", content: "Pages — Read. Mark. Learn." },
+      { property: "og:description", content: "Upload your books, read them anywhere, mark up with the pen and let the AI turn them into learning units." },
     ],
   }),
   component: Landing,
@@ -37,26 +37,26 @@ function Landing() {
           v 0.1 — personal reading os
         </div>
         <h1 className="mt-6 font-serif text-6xl md:text-8xl font-semibold leading-[1.02] tracking-tight">
-          Lies. <span className="text-primary">Markier.</span><br />
-          <span className="italic text-accent">Lern.</span>
+          Read. <span className="text-primary">Mark.</span><br />
+          <span className="italic text-accent">Learn.</span>
         </h1>
         <p className="mt-8 max-w-xl text-lg text-muted-foreground leading-relaxed">
-          Pages ist deine gemütliche Lese-Workstation. Bücher liegen in deinem Google Drive,
-          du markierst mit dem Stift — und die KI macht daraus warme, persönliche Lerneinheiten
-          als Markdown zurück in dein Drive.
+          Pages is your cozy reading workstation. Books live in your Google Drive,
+          you mark them up with the pen — and the AI turns it all into warm, personal
+          learning units as Markdown, right back into your Drive.
         </p>
         <div className="mt-10 flex flex-wrap items-center gap-4">
           <Link
             to="/auth"
             className="font-sans font-semibold text-sm rounded-full bg-primary text-primary-foreground px-6 py-3.5 hover:bg-sage-deep transition-colors shadow-sm"
           >
-            Mit Google starten →
+            Start with Google →
           </Link>
           <a
             href="#features"
             className="font-sans text-sm font-medium rounded-full border hairline px-6 py-3.5 hover:bg-secondary transition-colors"
           >
-            Features ansehen
+            See features
           </a>
         </div>
       </section>
@@ -67,10 +67,10 @@ function Landing() {
           {/* Drive Sync — large */}
           <BentoCard className="md:col-span-4 bg-secondary">
             <Badge>01 · Drive Sync</Badge>
-            <h3 className="mt-4 font-serif text-3xl">Deine Bibliothek, dein Drive.</h3>
+            <h3 className="mt-4 font-serif text-3xl">Your library, your Drive.</h3>
             <p className="mt-3 text-muted-foreground leading-relaxed max-w-md">
-              Bücher und Notizen liegen in deinem eigenen Google Drive. Pages liest und schreibt nur dort,
-              wo du es erlaubst — und alles synchronisiert sich von selbst.
+              Books and notes live in your own Google Drive. Pages reads and writes only where
+              you allow it — and everything syncs on its own.
             </p>
             <div className="mt-6 flex gap-2">
               <Pill>PDF</Pill>
@@ -79,44 +79,44 @@ function Landing() {
             </div>
           </BentoCard>
 
-          {/* Stift */}
+          {/* Pen */}
           <BentoCard className="md:col-span-2 bg-accent text-accent-foreground">
-            <Badge tone="dark">02 · Stift</Badge>
-            <h3 className="mt-4 font-serif text-2xl">Freihand & Highlights.</h3>
+            <Badge tone="dark">02 · Pen</Badge>
+            <h3 className="mt-4 font-serif text-2xl">Freehand & highlights.</h3>
             <p className="mt-3 text-sm opacity-80 leading-relaxed">
-              Mit Druckempfindlichkeit, pro Seite gespeichert, geräteübergreifend.
+              Pressure-sensitive, saved per page, across all your devices.
             </p>
           </BentoCard>
 
           {/* AI */}
           <BentoCard className="md:col-span-3 bg-card border hairline">
-            <Badge>03 · KI-Lerneinheit</Badge>
-            <h3 className="mt-4 font-serif text-2xl">Gemini fasst zusammen.</h3>
+            <Badge>03 · AI learning unit</Badge>
+            <h3 className="mt-4 font-serif text-2xl">Gemini sums it up.</h3>
             <p className="mt-3 text-muted-foreground text-sm leading-relaxed">
-              Aus deinen Markierungen baut die KI eine kompakte Markdown-Lerneinheit — abgelegt in
+              From your highlights the AI builds a compact Markdown learning unit — saved to
               <span className="text-foreground"> /Pages/Notes</span>.
             </p>
           </BentoCard>
 
           {/* Goals */}
           <BentoCard className="md:col-span-3 bg-primary text-primary-foreground">
-            <Badge tone="dark">04 · Ziele</Badge>
-            <h3 className="mt-4 font-serif text-2xl">Lies mit Plan.</h3>
+            <Badge tone="dark">04 · Goals</Badge>
+            <h3 className="mt-4 font-serif text-2xl">Read with a plan.</h3>
             <p className="mt-3 text-sm opacity-90 leading-relaxed">
-              Tägliche Minuten, Seiten pro Tag, Bücher pro Monat. Streak inklusive — ohne Druck.
+              Daily minutes, pages per day, books per month. Streaks included — no pressure.
             </p>
           </BentoCard>
 
-          {/* Analyse */}
+          {/* Analytics */}
           <BentoCard className="md:col-span-2 bg-card border hairline">
-            <Badge>05 · Analyse</Badge>
+            <Badge>05 · Analytics</Badge>
             <Heatmap />
           </BentoCard>
 
           {/* Quote */}
           <BentoCard className="md:col-span-4 bg-secondary">
             <p className="font-serif italic text-2xl leading-snug">
-              „Ein Buch muss die Axt sein für das gefrorene Meer in uns."
+              "A book must be the axe for the frozen sea inside us."
             </p>
             <div className="mt-4 label-mono text-muted-foreground">— Franz Kafka</div>
           </BentoCard>
