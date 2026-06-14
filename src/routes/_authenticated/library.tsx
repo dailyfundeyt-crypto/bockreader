@@ -131,7 +131,7 @@ function LibraryPage() {
                   "gemeinfreie oder offen lizenzierte Titel).\n\n" +
                   "Das Hochladen urheberrechtlich geschützter Inhalte ohne Erlaubnis " +
                   "kann gegen geltendes Recht verstoßen — die Verantwortung dafür liegt bei dir.\n\n" +
-                  "Mit „OK" bestätigst du, dass du die Datei rechtmäßig nutzt."
+                  'Mit "OK" bestätigst du, dass du die Datei rechtmäßig nutzt.'
                 );
                 if (ok) upload.mutate(f);
               }}
