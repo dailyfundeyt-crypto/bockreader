@@ -1,10 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/AppHeader";
 import { ensurePagesFolders } from "@/lib/drive";
 import { toast } from "sonner";
-import { User, Palette, HardDrive, FolderTree, Camera, Loader2 } from "lucide-react";
+import { User, Palette, HardDrive, FolderTree, Camera, Loader2, Plug, Plus, Copy, Trash2 } from "lucide-react";
+import { listMcpTokens, createMcpToken, deleteMcpToken } from "@/lib/mcp-tokens.functions";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({ meta: [{ title: "Settings · Pages" }] }),
