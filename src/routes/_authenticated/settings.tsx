@@ -1,10 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/AppHeader";
 import { ensurePagesFolders } from "@/lib/drive";
 import { toast } from "sonner";
-import { User, Palette, HardDrive, FolderTree, Camera, Loader2 } from "lucide-react";
+import { User, Palette, HardDrive, FolderTree, Camera, Loader2, Plug, Plus, Copy, Trash2 } from "lucide-react";
+import { listMcpTokens, createMcpToken, deleteMcpToken } from "@/lib/mcp-tokens.functions";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({ meta: [{ title: "Settings · Pages" }] }),
@@ -169,8 +172,133 @@ function SettingsPage() {
             und <span className="text-foreground font-medium">/Pages/Notes</span> für KI-Lerneinheiten. Zugriff nur auf eigene Dateien (drive.file scope).
           </p>
         </Card>
+
+        <McpCard />
       </div>
     </div>
+  );
+}
+
+function McpCard() {
+  const qc = useQueryClient();
+  const list = useServerFn(listMcpTokens);
+  const create = useServerFn(createMcpToken);
+  const del = useServerFn(deleteMcpToken);
+  const [label, setLabel] = useState("");
+  const [justCreated, setJustCreated] = useState<string | null>(null);
+  const mcpUrl = typeof window !== "undefined" ? `${window.location.origin}/api/mcp` : "/api/mcp";
+
+  const tokensQ = useQuery({
+    queryKey: ["mcp-tokens"],
+    queryFn: () => list(),
+  });
+
+  const createM = useMutation({
+    mutationFn: (l: string) => create({ data: l ? { label: l } : {} }),
+    onSuccess: (res) => {
+      setJustCreated(res.token);
+      setLabel("");
+      qc.invalidateQueries({ queryKey: ["mcp-tokens"] });
+      toast.success("Token erstellt — jetzt kopieren!");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const delM = useMutation({
+    mutationFn: (id: string) => del({ data: { id } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["mcp-tokens"] });
+      toast.success("Token entfernt.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  function copy(text: string) {
+    navigator.clipboard.writeText(text).then(
+      () => toast.success("Kopiert."),
+      () => toast.error("Kopieren fehlgeschlagen."),
+    );
+  }
+
+  return (
+    <Card icon={<Plug className="h-5 w-5" />} tone="sage">
+      <div className="font-serif text-lg">MCP-Server</div>
+      <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+        Verbinde Claude, Cursor oder andere MCP-Clients und lade Bücher über die Tools
+        <span className="font-mono text-xs"> list_books</span>,
+        <span className="font-mono text-xs"> upload_book</span>,
+        <span className="font-mono text-xs"> delete_book</span> hoch.
+      </p>
+
+      <div className="mt-4 space-y-2">
+        <div className="label-mono text-muted-foreground">SERVER URL</div>
+        <div className="flex items-center gap-2">
+          <code className="flex-1 truncate rounded-full border hairline bg-background px-3 py-2 text-xs">{mcpUrl}</code>
+          <button onClick={() => copy(mcpUrl)} className="rounded-full border hairline bg-background p-2 hover:bg-secondary" aria-label="URL kopieren">
+            <Copy className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {justCreated && (
+        <div className="mt-4 rounded-xl border hairline bg-background p-3">
+          <div className="label-mono text-muted-foreground mb-1">DEIN NEUER TOKEN — nur einmal sichtbar</div>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 truncate font-mono text-xs">{justCreated}</code>
+            <button onClick={() => copy(justCreated)} className="rounded-full border hairline bg-card p-2 hover:bg-secondary" aria-label="Token kopieren">
+              <Copy className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <button onClick={() => setJustCreated(null)} className="mt-2 label-mono text-muted-foreground hover:text-foreground">
+            verstanden — schließen
+          </button>
+        </div>
+      )}
+
+      <div className="mt-4 flex gap-2">
+        <input
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder="Name (z. B. Claude Desktop)"
+          className="flex-1 rounded-full border hairline bg-background px-4 py-2 text-sm font-sans focus:outline-none focus:ring-2 focus:ring-primary/30"
+        />
+        <button
+          onClick={() => createM.mutate(label.trim())}
+          disabled={createM.isPending}
+          className="label-mono rounded-full bg-primary text-primary-foreground px-4 py-2 hover:bg-sage-deep transition-colors shadow-sm flex items-center gap-2 disabled:opacity-60"
+        >
+          {createM.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+          Neuer Token
+        </button>
+      </div>
+
+      <div className="mt-4 space-y-2">
+        {tokensQ.isLoading ? (
+          <p className="label-mono text-muted-foreground">Lade…</p>
+        ) : !tokensQ.data?.tokens.length ? (
+          <p className="label-mono text-muted-foreground">Noch keine Tokens.</p>
+        ) : (
+          tokensQ.data.tokens.map((t) => (
+            <div key={t.id} className="flex items-center gap-3 rounded-xl border hairline bg-background px-3 py-2">
+              <div className="flex-1 min-w-0">
+                <div className="text-sm truncate">{t.label || "ohne Name"}</div>
+                <div className="label-mono text-muted-foreground">
+                  {t.token.slice(0, 12)}…{t.token.slice(-4)} · {new Date(t.created_at).toLocaleDateString("de-DE")}
+                </div>
+              </div>
+              <button
+                onClick={() => delM.mutate(t.id)}
+                disabled={delM.isPending}
+                className="rounded-full border hairline bg-card p-2 hover:bg-destructive/10 hover:text-destructive transition-colors"
+                aria-label="Token löschen"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+    </Card>
   );
 }
 
