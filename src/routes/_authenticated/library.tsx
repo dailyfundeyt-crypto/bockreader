@@ -139,14 +139,14 @@ function LibraryPage() {
           </>
         }
       />
-      <div className="p-8 space-y-6">
+      <div className="p-4 sm:p-8 space-y-6">
         <LibStats books={booksQ.data ?? []} />
         {booksQ.isLoading ? (
           <p className="label-mono text-muted-foreground">Lade…</p>
         ) : !booksQ.data?.length ? (
           <EmptyState />
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6">
             {booksQ.data.map((b, i) => <BookTile key={b.id} book={b} idx={i} />)}
           </div>
         )}

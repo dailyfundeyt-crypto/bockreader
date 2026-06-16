@@ -50,10 +50,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "Pages — Lesen, markieren, lernen" },
       { name: "description", content: "Bücher hochladen, mit dem Stift markieren, KI-Lerneinheiten erstellen und alles über Google Drive synchronisieren." },
       { name: "theme-color", content: "#f5f0e8" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-title", content: "Pages" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "default" },
+      { name: "mobile-web-app-capable", content: "yes" },
       { property: "og:title", content: "Pages — Lesen, markieren, lernen" },
       { name: "twitter:title", content: "Pages — Lesen, markieren, lernen" },
       { property: "og:description", content: "Bücher hochladen, mit dem Stift markieren, KI-Lerneinheiten erstellen und alles über Google Drive synchronisieren." },
@@ -65,6 +69,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/icons/apple-touch-icon.png" },
+      { rel: "icon", type: "image/png", sizes: "192x192", href: "/icons/icon-192.png" },
+      { rel: "icon", type: "image/png", sizes: "512x512", href: "/icons/icon-512.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Lora:wght@500;600;700&family=Nunito+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" },
