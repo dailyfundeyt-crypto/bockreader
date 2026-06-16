@@ -36,8 +36,25 @@ function AuthLayout() {
   if (isReader) return <Outlet />;
 
   return (
-    <div className="min-h-screen flex text-foreground">
-      <aside className="w-60 border-r hairline flex flex-col bg-card/50 backdrop-blur-sm">
+    <div className="min-h-[100dvh] flex flex-col md:flex-row text-foreground">
+      {/* Mobile top bar */}
+      <header className="md:hidden flex items-center justify-between px-4 py-3 border-b hairline bg-card/70 backdrop-blur-sm sticky top-0 z-30">
+        <Link to="/library" className="flex items-center gap-2">
+          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground">
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 21c0-9 7-16 16-16-1 9-7 16-16 16z" />
+              <path d="M5 21c4-4 7-7 11-11" />
+            </svg>
+          </span>
+          <span className="font-serif text-lg font-semibold tracking-tight">Pages</span>
+        </Link>
+        <button onClick={signOut} className="label-mono rounded-full border hairline bg-background px-3 py-1.5 hover:bg-secondary flex items-center gap-1.5">
+          <LogOut className="h-3.5 w-3.5" /> Sign out
+        </button>
+      </header>
+
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex w-60 border-r hairline flex-col bg-card/50 backdrop-blur-sm">
         <div className="px-5 py-5 border-b hairline">
           <Link to="/library" className="flex items-center gap-2.5">
             <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground">
@@ -73,9 +90,32 @@ function AuthLayout() {
           <span className="font-sans font-medium">Sign out</span>
         </button>
       </aside>
-      <main className="flex-1 overflow-auto">
+
+      <main className="flex-1 overflow-auto pb-20 md:pb-0">
         <Outlet />
       </main>
+
+      {/* Mobile bottom nav */}
+      <nav
+        className="md:hidden fixed bottom-0 inset-x-0 z-30 border-t hairline bg-card/95 backdrop-blur-md grid grid-cols-5"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        {NAV.map((n) => {
+          const active = loc.pathname === n.to || loc.pathname.startsWith(n.to + "/");
+          return (
+            <Link
+              key={n.to}
+              to={n.to}
+              className={`flex flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium tracking-wide uppercase ${
+                active ? "text-primary" : "text-muted-foreground"
+              }`}
+            >
+              <n.icon className="h-5 w-5" />
+              <span>{n.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
     </div>
   );
 }
