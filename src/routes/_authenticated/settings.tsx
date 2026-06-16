@@ -97,7 +97,7 @@ function SettingsPage() {
   return (
     <div>
       <PageHeader kicker="SETTINGS" title="Konto & Drive" />
-      <div className="p-8 max-w-2xl space-y-4">
+      <div className="p-4 sm:p-8 max-w-2xl space-y-4">
         <Card icon={<User className="h-5 w-5" />} tone="cream">
           <div className="flex items-start gap-5">
             <div className="relative shrink-0">
