@@ -173,22 +173,23 @@ function ReaderPage() {
 
   return (
     <div className="flex flex-col h-[100dvh] bg-background">
-      <div className="border-b hairline px-3 py-2 flex flex-wrap items-center gap-2">
-        <button onClick={() => navigate({ to: "/library" })} className="p-2 rounded-md hover:bg-secondary"><ArrowLeft className="h-4 w-4" /></button>
-        <div className="flex-1 min-w-0">
+      <div className="border-b hairline px-3 py-2 grid grid-cols-[auto_minmax(0,1fr)_auto] sm:flex sm:flex-wrap items-center gap-2">
+        <button onClick={() => navigate({ to: "/library" })} className="p-2 rounded-md hover:bg-secondary shrink-0"><ArrowLeft className="h-4 w-4" /></button>
+        <div className="min-w-0 sm:flex-1">
           <div className="font-mono text-sm truncate">{book.title}</div>
           <div className="label-mono text-muted-foreground">{book.format.toUpperCase()} · {page}{numPages ? `/${numPages}` : ""}</div>
         </div>
-        <div className="flex items-center gap-1 border hairline rounded-md">
+        <button onClick={generate} disabled={generating} className="label-mono bg-foreground text-background px-2.5 py-2 sm:px-3 rounded-md hover:bg-accent flex items-center gap-1.5 disabled:opacity-60 shrink-0">
+          <Sparkles className="h-3.5 w-3.5" /> <span className="hidden xs:inline sm:inline">{generating ? "..." : "Lerneinheit"}</span>
+        </button>
+        <div className="col-span-3 sm:col-auto flex items-center gap-1 border hairline rounded-md w-fit sm:order-none">
           <ToolBtn active={tool === "none"} onClick={() => setTool("none")}><MousePointer2 className="h-4 w-4" /></ToolBtn>
           <ToolBtn active={tool === "pen"} onClick={() => setTool("pen")}><Pen className="h-4 w-4" /></ToolBtn>
           <ToolBtn active={tool === "highlight"} onClick={() => setTool("highlight")}><Highlighter className="h-4 w-4" /></ToolBtn>
           <ToolBtn onClick={addNote}><StickyNote className="h-4 w-4" /></ToolBtn>
         </div>
-        <button onClick={generate} disabled={generating} className="label-mono bg-foreground text-background px-3 py-2 rounded-md hover:bg-accent flex items-center gap-2 disabled:opacity-60">
-          <Sparkles className="h-3.5 w-3.5" /> {generating ? "..." : "Lerneinheit"}
-        </button>
       </div>
+
 
       <div
         className="flex-1 overflow-auto flex items-start justify-center py-6 px-2"
