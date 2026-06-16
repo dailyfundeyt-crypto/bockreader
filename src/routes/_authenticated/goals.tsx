@@ -161,7 +161,7 @@ function GoalsPage() {
     <div>
       <PageHeader kicker="GOALS" title="Dein Lese-Bord." />
 
-      <div className="p-8 space-y-6 max-w-7xl">
+      <div className="p-4 sm:p-8 space-y-6 max-w-7xl">
         {/* Top KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Kpi tone="bg-primary text-primary-foreground" icon={<Flame className="h-5 w-5" />} label="Streak" value={`${stats.streak} Tage`} hint="In Folge gelesen" />

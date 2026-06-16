@@ -129,7 +129,7 @@ function AnalyticsPage() {
   return (
     <div>
       <PageHeader kicker="ANALYTICS" title="Deine Zahlen." />
-      <div className="p-8 space-y-6">
+      <div className="p-4 sm:p-8 space-y-6">
         {/* KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Kpi tone="bg-secondary" icon={<Clock className="h-4 w-4" />} label="HEUTE" value={fmtTime(stats.todaySec)} hint="Lesezeit" />
