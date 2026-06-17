@@ -4,9 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { downloadFile } from "@/lib/drive";
 import { type InkStroke, type Tool } from "@/components/PenLayer";
 import { toast } from "sonner";
-import { ArrowLeft, ChevronLeft, ChevronRight, Pen, Highlighter, MousePointer2, StickyNote, Sparkles } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Pen, Highlighter, MousePointer2, StickyNote, Sparkles, WifiOff } from "lucide-react";
 import { generateLearningUnit } from "@/lib/ai.functions";
 import { useServerFn } from "@tanstack/react-start";
+import { getBookBlob, saveBookBlob, getMeta, saveMeta } from "@/lib/offline-books";
+import { useOnline } from "@/hooks/use-online";
 
 const PdfView = lazy(() => import("@/components/PdfView"));
 
