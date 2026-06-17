@@ -4,9 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { downloadFile } from "@/lib/drive";
 import { type InkStroke, type Tool } from "@/components/PenLayer";
 import { toast } from "sonner";
-import { ArrowLeft, ChevronLeft, ChevronRight, Pen, Highlighter, MousePointer2, StickyNote, Sparkles } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Pen, Highlighter, MousePointer2, StickyNote, Sparkles, WifiOff } from "lucide-react";
 import { generateLearningUnit } from "@/lib/ai.functions";
 import { useServerFn } from "@tanstack/react-start";
+import { getBookBlob, saveBookBlob, getMeta, saveMeta } from "@/lib/offline-books";
+import { useOnline } from "@/hooks/use-online";
 
 const PdfView = lazy(() => import("@/components/PdfView"));
 
@@ -44,42 +46,75 @@ function ReaderPage() {
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const sessionStart = useRef<number>(Date.now());
   const sessionId = useRef<string | null>(null);
+  const online = useOnline();
 
   // Load book + start session
   useEffect(() => {
     (async () => {
-      const { data, error } = await supabase.from("books").select("*").eq("id", bookId).single();
-      if (error) { toast.error(error.message); return; }
-      setBook(data as Book);
-      setPage((data as Book).current_page || 1);
+      // 1) Versuch: Buch-Metadaten aus Netzwerk, sonst aus Offline-Cache.
+      let bk: Book | null = null;
       try {
-        const bk = data as Book;
-        let b: Blob;
-        if (bk.storage_path) {
-          const { data: dl, error: dlErr } = await supabase.storage.from("books").download(bk.storage_path);
-          if (dlErr || !dl) throw dlErr ?? new Error("Download fehlgeschlagen.");
-          b = dl;
-        } else if (bk.drive_file_id) {
-          b = await downloadFile(bk.drive_file_id);
+        const { data, error } = await supabase.from("books").select("*").eq("id", bookId).single();
+        if (error) throw error;
+        bk = data as Book;
+        await saveMeta(`book:${bookId}`, bk);
+      } catch (e) {
+        const cached = await getMeta<Book>(`book:${bookId}`);
+        if (cached) {
+          bk = cached;
+          toast.message("Offline-Modus: gespeicherte Version.");
         } else {
-          throw new Error("Keine Datei verknüpft.");
+          toast.error((e as Error).message ?? "Buch nicht verfügbar.");
+          return;
+        }
+      }
+      setBook(bk);
+      setPage(bk.current_page || 1);
+
+      // 2) Datei: Cache zuerst, sonst herunterladen + speichern.
+      try {
+        let b: Blob | null = await getBookBlob(bookId);
+        if (!b) {
+          if (bk.storage_path) {
+            const { data: dl, error: dlErr } = await supabase.storage.from("books").download(bk.storage_path);
+            if (dlErr || !dl) throw dlErr ?? new Error("Download fehlgeschlagen.");
+            b = dl;
+          } else if (bk.drive_file_id) {
+            b = await downloadFile(bk.drive_file_id);
+          } else {
+            throw new Error("Keine Datei verknüpft.");
+          }
+          await saveBookBlob(bookId, b, { title: bk.title, format: bk.format }).catch(() => {});
         }
         setBlob(b);
-      } catch (e) { toast.error((e as Error).message); }
+      } catch (e) {
+        toast.error("Datei nicht offline verfügbar: " + (e as Error).message);
+      }
 
+      // load annotations (best effort, sonst aus Cache)
+      try {
+        const { data: anns } = await supabase.from("annotations").select("*").eq("book_id", bookId);
+        if (anns) {
+          setAnnotations(anns as Annotation[]);
+          await saveMeta(`anns:${bookId}`, anns);
+        }
+      } catch {
+        const cached = await getMeta<Annotation[]>(`anns:${bookId}`);
+        if (cached) setAnnotations(cached);
+      }
 
-      // load annotations
-      const { data: anns } = await supabase.from("annotations").select("*").eq("book_id", bookId);
-      setAnnotations((anns ?? []) as Annotation[]);
-
-      // start reading session
-      const { data: user } = await supabase.auth.getUser();
-      const { data: sess } = await supabase
-        .from("reading_sessions")
-        .insert({ user_id: user.user!.id, book_id: bookId })
-        .select("id")
-        .single();
-      sessionId.current = sess?.id ?? null;
+      // start reading session (nur online)
+      try {
+        const { data: user } = await supabase.auth.getUser();
+        if (user.user) {
+          const { data: sess } = await supabase
+            .from("reading_sessions")
+            .insert({ user_id: user.user.id, book_id: bookId })
+            .select("id")
+            .single();
+          sessionId.current = sess?.id ?? null;
+        }
+      } catch { /* offline ok */ }
     })();
 
     return () => {
@@ -88,7 +123,8 @@ function ReaderPage() {
         supabase
           .from("reading_sessions")
           .update({ ended_at: new Date().toISOString(), duration_seconds: seconds })
-          .eq("id", sessionId.current);
+          .eq("id", sessionId.current)
+          .then(undefined, () => {});
       }
     };
   }, [bookId]);
@@ -176,7 +212,10 @@ function ReaderPage() {
       <div className="border-b hairline px-3 py-2 grid grid-cols-[auto_minmax(0,1fr)_auto] sm:flex sm:flex-wrap items-center gap-2">
         <button onClick={() => navigate({ to: "/library" })} className="p-2 rounded-md hover:bg-secondary shrink-0"><ArrowLeft className="h-4 w-4" /></button>
         <div className="min-w-0 sm:flex-1">
-          <div className="font-mono text-sm truncate">{book.title}</div>
+          <div className="font-mono text-sm truncate flex items-center gap-2">
+            {book.title}
+            {!online && <span title="Offline" className="inline-flex items-center gap-1 label-mono bg-muted text-muted-foreground rounded-full px-1.5 py-0.5"><WifiOff className="h-3 w-3" />OFFLINE</span>}
+          </div>
           <div className="label-mono text-muted-foreground">{book.format.toUpperCase()} · {page}{numPages ? `/${numPages}` : ""}</div>
         </div>
         <button onClick={generate} disabled={generating} className="label-mono bg-foreground text-background px-2.5 py-2 sm:px-3 rounded-md hover:bg-accent flex items-center gap-1.5 disabled:opacity-60 shrink-0">

@@ -1,12 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadFile, ensurePagesFolders, listBooks, uploadFile } from "@/lib/drive";
 import { PageHeader } from "@/components/AppHeader";
 import { toast } from "sonner";
-import { Upload, RefreshCw, BookOpen, Library as LibraryIcon, FileText, CheckCircle2 } from "lucide-react";
+import { Upload, RefreshCw, BookOpen, Library as LibraryIcon, FileText, CheckCircle2, Download, CheckCircle, WifiOff } from "lucide-react";
 import { useMemo } from "react";
+import { getMeta, saveMeta, hasBookCached, saveBookBlob, removeBookBlob, listCachedBookIds } from "@/lib/offline-books";
+import { useOnline } from "@/hooks/use-online";
 
 export const Route = createFileRoute("/_authenticated/library")({
   head: () => ({ meta: [{ title: "Library · Pages" }] }),
@@ -30,13 +32,31 @@ function LibraryPage() {
   const qc = useQueryClient();
   const fileInput = useRef<HTMLInputElement>(null);
   const [syncing, setSyncing] = useState(false);
+  const online = useOnline();
+  const [cachedIds, setCachedIds] = useState<Set<string>>(new Set());
+
+  async function refreshCached() {
+    const ids = await listCachedBookIds();
+    setCachedIds(new Set(ids));
+  }
+  useEffect(() => { refreshCached(); }, []);
 
   const booksQ = useQuery({
     queryKey: ["books"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("books").select("*").order("added_at", { ascending: false });
-      if (error) throw error;
-      return data as Book[];
+      try {
+        const { data, error } = await supabase.from("books").select("*").order("added_at", { ascending: false });
+        if (error) throw error;
+        await saveMeta("library", data);
+        return data as Book[];
+      } catch (e) {
+        const cached = await getMeta<Book[]>("library");
+        if (cached?.length) {
+          toast.message("Offline-Modus: zeige gespeicherte Bibliothek.");
+          return cached;
+        }
+        throw e;
+      }
     },
   });
 
@@ -140,6 +160,12 @@ function LibraryPage() {
         }
       />
       <div className="p-4 sm:p-8 space-y-6">
+        {!online && (
+          <div className="flex items-center gap-2 rounded-2xl border hairline bg-muted/60 px-4 py-3 label-mono">
+            <WifiOff className="h-4 w-4" />
+            Offline-Modus — nur heruntergeladene Bücher sind lesbar.
+          </div>
+        )}
         <LibStats books={booksQ.data ?? []} />
         {booksQ.isLoading ? (
           <p className="label-mono text-muted-foreground">Lade…</p>
@@ -147,7 +173,16 @@ function LibraryPage() {
           <EmptyState />
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6">
-            {booksQ.data.map((b, i) => <BookTile key={b.id} book={b} idx={i} />)}
+            {booksQ.data.map((b, i) => (
+              <BookTile
+                key={b.id}
+                book={b}
+                idx={i}
+                cached={cachedIds.has(b.id)}
+                online={online}
+                onChanged={refreshCached}
+              />
+            ))}
           </div>
         )}
       </div>
@@ -163,15 +198,72 @@ const TILE_TONES = [
   "bg-card",
 ] as const;
 
-function BookTile({ book, idx }: { book: Book; idx: number }) {
+function BookTile({ book, idx, cached, online, onChanged }: { book: Book; idx: number; cached: boolean; online: boolean; onChanged: () => void }) {
   const tone = TILE_TONES[idx % TILE_TONES.length];
+  const [busy, setBusy] = useState(false);
+
+  async function downloadForOffline(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setBusy(true);
+    try {
+      let b: Blob;
+      if (book.storage_path) {
+        const { data: dl, error } = await supabase.storage.from("books").download(book.storage_path);
+        if (error || !dl) throw error ?? new Error("Download fehlgeschlagen.");
+        b = dl;
+      } else if (book.drive_file_id) {
+        b = await downloadFile(book.drive_file_id);
+      } else {
+        throw new Error("Keine Datei verknüpft.");
+      }
+      await saveBookBlob(book.id, b, { title: book.title, format: book.format });
+      toast.success("Offline gespeichert.");
+      onChanged();
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeOffline(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    await removeBookBlob(book.id);
+    toast.success("Offline-Kopie entfernt.");
+    onChanged();
+  }
+
+  const disabledLink = !online && !cached;
+
   return (
-    <Link to="/read/$bookId" params={{ bookId: book.id }} className="group block">
+    <Link
+      to="/read/$bookId"
+      params={{ bookId: book.id }}
+      onClick={(e) => { if (disabledLink) { e.preventDefault(); toast.error("Offline: zuerst herunterladen."); } }}
+      className={`group block ${disabledLink ? "opacity-50" : ""}`}
+    >
       <div className={`aspect-[2/3] rounded-2xl border hairline ${tone} relative overflow-hidden transition-transform group-hover:-translate-y-1 shadow-sm`}>
         <div className="absolute inset-0 flex items-center justify-center p-5 text-center">
           <span className="font-serif text-lg leading-tight">{book.title}</span>
         </div>
         <div className="absolute top-2.5 left-2.5 label-mono bg-background/80 rounded-full px-2 py-0.5">{book.format.toUpperCase()}</div>
+        <button
+          type="button"
+          onClick={cached ? removeOffline : downloadForOffline}
+          disabled={busy || (!cached && !online)}
+          title={cached ? "Offline-Kopie entfernen" : "Für Offline herunterladen"}
+          className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 label-mono bg-background/85 hover:bg-background rounded-full px-2 py-0.5 disabled:opacity-50"
+        >
+          {busy ? (
+            <RefreshCw className="h-3 w-3 animate-spin" />
+          ) : cached ? (
+            <><CheckCircle className="h-3 w-3 text-primary" /> OFFLINE</>
+          ) : (
+            <Download className="h-3 w-3" />
+          )}
+        </button>
       </div>
       <div className="mt-3 px-1">
         <div className="font-serif text-base truncate">{book.title}</div>
