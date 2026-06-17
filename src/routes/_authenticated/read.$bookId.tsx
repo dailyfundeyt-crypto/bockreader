@@ -132,14 +132,39 @@ function ReaderPage() {
     };
   }, [bookId]);
 
-  // Persist current page
+  // Persist current page (lokal sofort, Server mit Outbox-Fallback)
   useEffect(() => {
     if (!book) return;
-    const t = setTimeout(() => {
-      supabase.from("books").update({ current_page: page, pages: numPages || book.pages }).eq("id", book.id);
+    const t = setTimeout(async () => {
+      const updated = { ...book, current_page: page, pages: numPages || book.pages };
+      await saveMeta(`book:${book.id}`, updated).catch(() => {});
+      try {
+        const { error } = await supabase.from("books").update({ current_page: page, pages: numPages || book.pages }).eq("id", book.id);
+        if (error) throw error;
+      } catch {
+        await enqueue({ kind: "progress", bookId: book.id, page, pages: numPages || book.pages, ts: Date.now() }).catch(() => {});
+      }
     }, 600);
     return () => clearTimeout(t);
   }, [page, numPages, book]);
+
+  // Outbox flushen bei Online-Status / Mount
+  useEffect(() => {
+    if (!online) return;
+    (async () => {
+      const res = await flushQueue();
+      if (res.inserts.length) {
+        // temp-IDs durch echte ersetzen
+        setAnnotations((prev) => {
+          const map = new Map(res.inserts.map((i) => [i.tempId, i.row as Annotation]));
+          const next = prev.map((a) => (map.get(a.id) ?? a));
+          saveMeta(`anns:${bookId}`, next).catch(() => {});
+          return next;
+        });
+      }
+      if (res.flushed > 0) toast.success(`Synchronisiert: ${res.flushed}`);
+    })();
+  }, [online, bookId]);
 
   const pageAnns = useMemo(() => annotations.filter((a) => a.page === page), [annotations, page]);
   const inkStrokes = useMemo<InkStroke[]>(() => {
