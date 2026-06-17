@@ -32,13 +32,31 @@ function LibraryPage() {
   const qc = useQueryClient();
   const fileInput = useRef<HTMLInputElement>(null);
   const [syncing, setSyncing] = useState(false);
+  const online = useOnline();
+  const [cachedIds, setCachedIds] = useState<Set<string>>(new Set());
+
+  async function refreshCached() {
+    const ids = await listCachedBookIds();
+    setCachedIds(new Set(ids));
+  }
+  useEffect(() => { refreshCached(); }, []);
 
   const booksQ = useQuery({
     queryKey: ["books"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("books").select("*").order("added_at", { ascending: false });
-      if (error) throw error;
-      return data as Book[];
+      try {
+        const { data, error } = await supabase.from("books").select("*").order("added_at", { ascending: false });
+        if (error) throw error;
+        await saveMeta("library", data);
+        return data as Book[];
+      } catch (e) {
+        const cached = await getMeta<Book[]>("library");
+        if (cached?.length) {
+          toast.message("Offline-Modus: zeige gespeicherte Bibliothek.");
+          return cached;
+        }
+        throw e;
+      }
     },
   });
 
