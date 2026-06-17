@@ -160,6 +160,12 @@ function LibraryPage() {
         }
       />
       <div className="p-4 sm:p-8 space-y-6">
+        {!online && (
+          <div className="flex items-center gap-2 rounded-2xl border hairline bg-muted/60 px-4 py-3 label-mono">
+            <WifiOff className="h-4 w-4" />
+            Offline-Modus — nur heruntergeladene Bücher sind lesbar.
+          </div>
+        )}
         <LibStats books={booksQ.data ?? []} />
         {booksQ.isLoading ? (
           <p className="label-mono text-muted-foreground">Lade…</p>
@@ -167,7 +173,16 @@ function LibraryPage() {
           <EmptyState />
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6">
-            {booksQ.data.map((b, i) => <BookTile key={b.id} book={b} idx={i} />)}
+            {booksQ.data.map((b, i) => (
+              <BookTile
+                key={b.id}
+                book={b}
+                idx={i}
+                cached={cachedIds.has(b.id)}
+                online={online}
+                onChanged={refreshCached}
+              />
+            ))}
           </div>
         )}
       </div>
