@@ -212,7 +212,10 @@ function ReaderPage() {
       <div className="border-b hairline px-3 py-2 grid grid-cols-[auto_minmax(0,1fr)_auto] sm:flex sm:flex-wrap items-center gap-2">
         <button onClick={() => navigate({ to: "/library" })} className="p-2 rounded-md hover:bg-secondary shrink-0"><ArrowLeft className="h-4 w-4" /></button>
         <div className="min-w-0 sm:flex-1">
-          <div className="font-mono text-sm truncate">{book.title}</div>
+          <div className="font-mono text-sm truncate flex items-center gap-2">
+            {book.title}
+            {!online && <span title="Offline" className="inline-flex items-center gap-1 label-mono bg-muted text-muted-foreground rounded-full px-1.5 py-0.5"><WifiOff className="h-3 w-3" />OFFLINE</span>}
+          </div>
           <div className="label-mono text-muted-foreground">{book.format.toUpperCase()} · {page}{numPages ? `/${numPages}` : ""}</div>
         </div>
         <button onClick={generate} disabled={generating} className="label-mono bg-foreground text-background px-2.5 py-2 sm:px-3 rounded-md hover:bg-accent flex items-center gap-1.5 disabled:opacity-60 shrink-0">
