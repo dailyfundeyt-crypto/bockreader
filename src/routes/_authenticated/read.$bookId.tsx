@@ -9,6 +9,7 @@ import { generateLearningUnit } from "@/lib/ai.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { getBookBlob, saveBookBlob, getMeta, saveMeta } from "@/lib/offline-books";
 import { useOnline } from "@/hooks/use-online";
+import { enqueue, flushQueue } from "@/lib/sync-queue";
 
 const PdfView = lazy(() => import("@/components/PdfView"));
 
