@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { downloadFile, ensurePagesFolders, listBooks, uploadFile } from "@/lib/drive";
 import { PageHeader } from "@/components/AppHeader";
 import { toast } from "sonner";
-import { Upload, RefreshCw, BookOpen, Library as LibraryIcon, FileText, CheckCircle2, Download, CheckCircle, WifiOff, Trash2 } from "lucide-react";
+import { Upload, RefreshCw, BookOpen, Library as LibraryIcon, FileText, CheckCircle2, Download, CheckCircle, WifiOff } from "lucide-react";
 import { useMemo } from "react";
 import { getMeta, saveMeta, hasBookCached, saveBookBlob, removeBookBlob, listCachedBookIds } from "@/lib/offline-books";
 import { useOnline } from "@/hooks/use-online";
