@@ -198,15 +198,72 @@ const TILE_TONES = [
   "bg-card",
 ] as const;
 
-function BookTile({ book, idx }: { book: Book; idx: number }) {
+function BookTile({ book, idx, cached, online, onChanged }: { book: Book; idx: number; cached: boolean; online: boolean; onChanged: () => void }) {
   const tone = TILE_TONES[idx % TILE_TONES.length];
+  const [busy, setBusy] = useState(false);
+
+  async function downloadForOffline(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setBusy(true);
+    try {
+      let b: Blob;
+      if (book.storage_path) {
+        const { data: dl, error } = await supabase.storage.from("books").download(book.storage_path);
+        if (error || !dl) throw error ?? new Error("Download fehlgeschlagen.");
+        b = dl;
+      } else if (book.drive_file_id) {
+        b = await downloadFile(book.drive_file_id);
+      } else {
+        throw new Error("Keine Datei verknüpft.");
+      }
+      await saveBookBlob(book.id, b, { title: book.title, format: book.format });
+      toast.success("Offline gespeichert.");
+      onChanged();
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeOffline(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    await removeBookBlob(book.id);
+    toast.success("Offline-Kopie entfernt.");
+    onChanged();
+  }
+
+  const disabledLink = !online && !cached;
+
   return (
-    <Link to="/read/$bookId" params={{ bookId: book.id }} className="group block">
+    <Link
+      to="/read/$bookId"
+      params={{ bookId: book.id }}
+      onClick={(e) => { if (disabledLink) { e.preventDefault(); toast.error("Offline: zuerst herunterladen."); } }}
+      className={`group block ${disabledLink ? "opacity-50" : ""}`}
+    >
       <div className={`aspect-[2/3] rounded-2xl border hairline ${tone} relative overflow-hidden transition-transform group-hover:-translate-y-1 shadow-sm`}>
         <div className="absolute inset-0 flex items-center justify-center p-5 text-center">
           <span className="font-serif text-lg leading-tight">{book.title}</span>
         </div>
         <div className="absolute top-2.5 left-2.5 label-mono bg-background/80 rounded-full px-2 py-0.5">{book.format.toUpperCase()}</div>
+        <button
+          type="button"
+          onClick={cached ? removeOffline : downloadForOffline}
+          disabled={busy || (!cached && !online)}
+          title={cached ? "Offline-Kopie entfernen" : "Für Offline herunterladen"}
+          className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 label-mono bg-background/85 hover:bg-background rounded-full px-2 py-0.5 disabled:opacity-50"
+        >
+          {busy ? (
+            <RefreshCw className="h-3 w-3 animate-spin" />
+          ) : cached ? (
+            <><CheckCircle className="h-3 w-3 text-primary" /> OFFLINE</>
+          ) : (
+            <Download className="h-3 w-3" />
+          )}
+        </button>
       </div>
       <div className="mt-3 px-1">
         <div className="font-serif text-base truncate">{book.title}</div>
