@@ -175,29 +175,41 @@ function ReaderPage() {
     return out;
   }, [pageAnns]);
 
+  async function persistAnnotation(row: { user_id: string; book_id: string; page: number; type: string; data: any }) {
+    const tempId = `local-${crypto.randomUUID()}`;
+    const optimistic = { id: tempId, page: row.page, type: row.type as Annotation["type"], data: row.data } as Annotation;
+    setAnnotations((a) => {
+      const next = [...a, optimistic];
+      saveMeta(`anns:${bookId}`, next).catch(() => {});
+      return next;
+    });
+    try {
+      const { data, error } = await supabase.from("annotations").insert(row).select("*").single();
+      if (error) throw error;
+      setAnnotations((a) => {
+        const next = a.map((x) => (x.id === tempId ? (data as Annotation) : x));
+        saveMeta(`anns:${bookId}`, next).catch(() => {});
+        return next;
+      });
+    } catch {
+      await enqueue({ kind: "annotation.insert", tempId, row, ts: Date.now() }).catch(() => {});
+      toast.message("Offline gespeichert – wird synchronisiert.");
+    }
+  }
+
   async function commitStroke(stroke: InkStroke) {
     const { data: user } = await supabase.auth.getUser();
+    if (!user.user) return;
     const type = tool === "highlight" ? "highlight" : "ink";
-    const { data, error } = await supabase
-      .from("annotations")
-      .insert({ user_id: user.user!.id, book_id: bookId, page, type, data: { strokes: [stroke] } })
-      .select("*")
-      .single();
-    if (error) { toast.error(error.message); return; }
-    setAnnotations((a) => [...a, data as Annotation]);
+    await persistAnnotation({ user_id: user.user.id, book_id: bookId, page, type, data: { strokes: [stroke] } });
   }
 
   async function addNote() {
     const text = window.prompt("Notiz:");
     if (!text) return;
     const { data: user } = await supabase.auth.getUser();
-    const { data, error } = await supabase
-      .from("annotations")
-      .insert({ user_id: user.user!.id, book_id: bookId, page, type: "note", data: { text, x: 20, y: 20 } })
-      .select("*")
-      .single();
-    if (error) { toast.error(error.message); return; }
-    setAnnotations((a) => [...a, data as Annotation]);
+    if (!user.user) return;
+    await persistAnnotation({ user_id: user.user.id, book_id: bookId, page, type: "note", data: { text, x: 20, y: 20 } });
   }
 
   const generateFn = useServerFn(generateLearningUnit);
