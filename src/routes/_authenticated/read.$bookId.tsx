@@ -46,42 +46,75 @@ function ReaderPage() {
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const sessionStart = useRef<number>(Date.now());
   const sessionId = useRef<string | null>(null);
+  const online = useOnline();
 
   // Load book + start session
   useEffect(() => {
     (async () => {
-      const { data, error } = await supabase.from("books").select("*").eq("id", bookId).single();
-      if (error) { toast.error(error.message); return; }
-      setBook(data as Book);
-      setPage((data as Book).current_page || 1);
+      // 1) Versuch: Buch-Metadaten aus Netzwerk, sonst aus Offline-Cache.
+      let bk: Book | null = null;
       try {
-        const bk = data as Book;
-        let b: Blob;
-        if (bk.storage_path) {
-          const { data: dl, error: dlErr } = await supabase.storage.from("books").download(bk.storage_path);
-          if (dlErr || !dl) throw dlErr ?? new Error("Download fehlgeschlagen.");
-          b = dl;
-        } else if (bk.drive_file_id) {
-          b = await downloadFile(bk.drive_file_id);
+        const { data, error } = await supabase.from("books").select("*").eq("id", bookId).single();
+        if (error) throw error;
+        bk = data as Book;
+        await saveMeta(`book:${bookId}`, bk);
+      } catch (e) {
+        const cached = await getMeta<Book>(`book:${bookId}`);
+        if (cached) {
+          bk = cached;
+          toast.message("Offline-Modus: gespeicherte Version.");
         } else {
-          throw new Error("Keine Datei verknüpft.");
+          toast.error((e as Error).message ?? "Buch nicht verfügbar.");
+          return;
+        }
+      }
+      setBook(bk);
+      setPage(bk.current_page || 1);
+
+      // 2) Datei: Cache zuerst, sonst herunterladen + speichern.
+      try {
+        let b: Blob | null = await getBookBlob(bookId);
+        if (!b) {
+          if (bk.storage_path) {
+            const { data: dl, error: dlErr } = await supabase.storage.from("books").download(bk.storage_path);
+            if (dlErr || !dl) throw dlErr ?? new Error("Download fehlgeschlagen.");
+            b = dl;
+          } else if (bk.drive_file_id) {
+            b = await downloadFile(bk.drive_file_id);
+          } else {
+            throw new Error("Keine Datei verknüpft.");
+          }
+          await saveBookBlob(bookId, b, { title: bk.title, format: bk.format }).catch(() => {});
         }
         setBlob(b);
-      } catch (e) { toast.error((e as Error).message); }
+      } catch (e) {
+        toast.error("Datei nicht offline verfügbar: " + (e as Error).message);
+      }
 
+      // load annotations (best effort, sonst aus Cache)
+      try {
+        const { data: anns } = await supabase.from("annotations").select("*").eq("book_id", bookId);
+        if (anns) {
+          setAnnotations(anns as Annotation[]);
+          await saveMeta(`anns:${bookId}`, anns);
+        }
+      } catch {
+        const cached = await getMeta<Annotation[]>(`anns:${bookId}`);
+        if (cached) setAnnotations(cached);
+      }
 
-      // load annotations
-      const { data: anns } = await supabase.from("annotations").select("*").eq("book_id", bookId);
-      setAnnotations((anns ?? []) as Annotation[]);
-
-      // start reading session
-      const { data: user } = await supabase.auth.getUser();
-      const { data: sess } = await supabase
-        .from("reading_sessions")
-        .insert({ user_id: user.user!.id, book_id: bookId })
-        .select("id")
-        .single();
-      sessionId.current = sess?.id ?? null;
+      // start reading session (nur online)
+      try {
+        const { data: user } = await supabase.auth.getUser();
+        if (user.user) {
+          const { data: sess } = await supabase
+            .from("reading_sessions")
+            .insert({ user_id: user.user.id, book_id: bookId })
+            .select("id")
+            .single();
+          sessionId.current = sess?.id ?? null;
+        }
+      } catch { /* offline ok */ }
     })();
 
     return () => {
@@ -90,7 +123,8 @@ function ReaderPage() {
         supabase
           .from("reading_sessions")
           .update({ ended_at: new Date().toISOString(), duration_seconds: seconds })
-          .eq("id", sessionId.current);
+          .eq("id", sessionId.current)
+          .then(undefined, () => {});
       }
     };
   }, [bookId]);
