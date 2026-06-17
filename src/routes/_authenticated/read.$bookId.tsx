@@ -9,6 +9,7 @@ import { generateLearningUnit } from "@/lib/ai.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { getBookBlob, saveBookBlob, getMeta, saveMeta } from "@/lib/offline-books";
 import { useOnline } from "@/hooks/use-online";
+import { enqueue, flushQueue } from "@/lib/sync-queue";
 
 const PdfView = lazy(() => import("@/components/PdfView"));
 
@@ -91,17 +92,19 @@ function ReaderPage() {
         toast.error("Datei nicht offline verfügbar: " + (e as Error).message);
       }
 
-      // load annotations (best effort, sonst aus Cache)
+      // load annotations: lokale Version + Server mergen (lokal überschreibt nichts, fügt fehlende hinzu)
+      const cachedAnns = (await getMeta<Annotation[]>(`anns:${bookId}`)) ?? [];
+      setAnnotations(cachedAnns);
       try {
         const { data: anns } = await supabase.from("annotations").select("*").eq("book_id", bookId);
         if (anns) {
-          setAnnotations(anns as Annotation[]);
-          await saveMeta(`anns:${bookId}`, anns);
+          const serverIds = new Set((anns as Annotation[]).map((a) => a.id));
+          const pendingLocal = cachedAnns.filter((a) => a.id.startsWith("local-") || !serverIds.has(a.id));
+          const merged = [...(anns as Annotation[]), ...pendingLocal];
+          setAnnotations(merged);
+          await saveMeta(`anns:${bookId}`, merged);
         }
-      } catch {
-        const cached = await getMeta<Annotation[]>(`anns:${bookId}`);
-        if (cached) setAnnotations(cached);
-      }
+      } catch { /* offline ok, cache reicht */ }
 
       // start reading session (nur online)
       try {
@@ -129,14 +132,39 @@ function ReaderPage() {
     };
   }, [bookId]);
 
-  // Persist current page
+  // Persist current page (lokal sofort, Server mit Outbox-Fallback)
   useEffect(() => {
     if (!book) return;
-    const t = setTimeout(() => {
-      supabase.from("books").update({ current_page: page, pages: numPages || book.pages }).eq("id", book.id);
+    const t = setTimeout(async () => {
+      const updated = { ...book, current_page: page, pages: numPages || book.pages };
+      await saveMeta(`book:${book.id}`, updated).catch(() => {});
+      try {
+        const { error } = await supabase.from("books").update({ current_page: page, pages: numPages || book.pages }).eq("id", book.id);
+        if (error) throw error;
+      } catch {
+        await enqueue({ kind: "progress", bookId: book.id, page, pages: numPages || book.pages, ts: Date.now() }).catch(() => {});
+      }
     }, 600);
     return () => clearTimeout(t);
   }, [page, numPages, book]);
+
+  // Outbox flushen bei Online-Status / Mount
+  useEffect(() => {
+    if (!online) return;
+    (async () => {
+      const res = await flushQueue();
+      if (res.inserts.length) {
+        // temp-IDs durch echte ersetzen
+        setAnnotations((prev) => {
+          const map = new Map(res.inserts.map((i) => [i.tempId, i.row as Annotation]));
+          const next = prev.map((a) => (map.get(a.id) ?? a));
+          saveMeta(`anns:${bookId}`, next).catch(() => {});
+          return next;
+        });
+      }
+      if (res.flushed > 0) toast.success(`Synchronisiert: ${res.flushed}`);
+    })();
+  }, [online, bookId]);
 
   const pageAnns = useMemo(() => annotations.filter((a) => a.page === page), [annotations, page]);
   const inkStrokes = useMemo<InkStroke[]>(() => {
@@ -147,29 +175,41 @@ function ReaderPage() {
     return out;
   }, [pageAnns]);
 
+  async function persistAnnotation(row: { user_id: string; book_id: string; page: number; type: string; data: any }) {
+    const tempId = `local-${crypto.randomUUID()}`;
+    const optimistic = { id: tempId, page: row.page, type: row.type as Annotation["type"], data: row.data } as Annotation;
+    setAnnotations((a) => {
+      const next = [...a, optimistic];
+      saveMeta(`anns:${bookId}`, next).catch(() => {});
+      return next;
+    });
+    try {
+      const { data, error } = await supabase.from("annotations").insert(row).select("*").single();
+      if (error) throw error;
+      setAnnotations((a) => {
+        const next = a.map((x) => (x.id === tempId ? (data as Annotation) : x));
+        saveMeta(`anns:${bookId}`, next).catch(() => {});
+        return next;
+      });
+    } catch {
+      await enqueue({ kind: "annotation.insert", tempId, row, ts: Date.now() }).catch(() => {});
+      toast.message("Offline gespeichert – wird synchronisiert.");
+    }
+  }
+
   async function commitStroke(stroke: InkStroke) {
     const { data: user } = await supabase.auth.getUser();
+    if (!user.user) return;
     const type = tool === "highlight" ? "highlight" : "ink";
-    const { data, error } = await supabase
-      .from("annotations")
-      .insert({ user_id: user.user!.id, book_id: bookId, page, type, data: { strokes: [stroke] } })
-      .select("*")
-      .single();
-    if (error) { toast.error(error.message); return; }
-    setAnnotations((a) => [...a, data as Annotation]);
+    await persistAnnotation({ user_id: user.user.id, book_id: bookId, page, type, data: { strokes: [stroke] } });
   }
 
   async function addNote() {
     const text = window.prompt("Notiz:");
     if (!text) return;
     const { data: user } = await supabase.auth.getUser();
-    const { data, error } = await supabase
-      .from("annotations")
-      .insert({ user_id: user.user!.id, book_id: bookId, page, type: "note", data: { text, x: 20, y: 20 } })
-      .select("*")
-      .single();
-    if (error) { toast.error(error.message); return; }
-    setAnnotations((a) => [...a, data as Annotation]);
+    if (!user.user) return;
+    await persistAnnotation({ user_id: user.user.id, book_id: bookId, page, type: "note", data: { text, x: 20, y: 20 } });
   }
 
   const generateFn = useServerFn(generateLearningUnit);
