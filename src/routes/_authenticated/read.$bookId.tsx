@@ -92,17 +92,19 @@ function ReaderPage() {
         toast.error("Datei nicht offline verfügbar: " + (e as Error).message);
       }
 
-      // load annotations (best effort, sonst aus Cache)
+      // load annotations: lokale Version + Server mergen (lokal überschreibt nichts, fügt fehlende hinzu)
+      const cachedAnns = (await getMeta<Annotation[]>(`anns:${bookId}`)) ?? [];
+      setAnnotations(cachedAnns);
       try {
         const { data: anns } = await supabase.from("annotations").select("*").eq("book_id", bookId);
         if (anns) {
-          setAnnotations(anns as Annotation[]);
-          await saveMeta(`anns:${bookId}`, anns);
+          const serverIds = new Set((anns as Annotation[]).map((a) => a.id));
+          const pendingLocal = cachedAnns.filter((a) => a.id.startsWith("local-") || !serverIds.has(a.id));
+          const merged = [...(anns as Annotation[]), ...pendingLocal];
+          setAnnotations(merged);
+          await saveMeta(`anns:${bookId}`, merged);
         }
-      } catch {
-        const cached = await getMeta<Annotation[]>(`anns:${bookId}`);
-        if (cached) setAnnotations(cached);
-      }
+      } catch { /* offline ok, cache reicht */ }
 
       // start reading session (nur online)
       try {
